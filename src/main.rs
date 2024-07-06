@@ -16,6 +16,7 @@ use crate::endpoints::index;
 mod endpoints;
 mod models;
 mod schema;
+mod operations;
 
 fn config_logger(target: Target) -> Result<()> {
     Builder::from_default_env()
