@@ -6,12 +6,12 @@ CREATE TABLE IF NOT EXISTS public.document
 (
 
     id_document     uuid,
-    name            varchar,
-    extension       varchar,
-    application     varchar,
+    name            varchar     NOT NULL,
+    extension       varchar     NOT NULL,
+    application     varchar     NOT NULL,
 
     create_datetime timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    create_username varchar,
+    create_username varchar     NOT NULL,
 
     update_datetime timestamptz,
     update_username varchar,
@@ -23,12 +23,12 @@ CREATE TABLE IF NOT EXISTS public.document
 
 CREATE TABLE IF NOT EXISTS public.content
 (
-    id              uuid                 DEFAULT gen_random_uuid(),
-    id_document     uuid references public.document (id_document),
+    id              uuid        NOT NULL DEFAULT gen_random_uuid(),
+    id_document     uuid        NOT NULL references public.document (id_document),
     data            text        NOT NULL,
 
     create_datetime timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    create_username varchar,
+    create_username varchar     NOT NULL,
 
     delete_datetime timestamptz,
     delete_username varchar,

@@ -3,10 +3,10 @@
 diesel::table! {
     content (id) {
         id -> Uuid,
-        id_document -> Nullable<Uuid>,
+        id_document -> Uuid,
         data -> Text,
         create_datetime -> Timestamptz,
-        create_username -> Nullable<Varchar>,
+        create_username -> Varchar,
         delete_datetime -> Nullable<Timestamptz>,
         delete_username -> Nullable<Varchar>,
     }
@@ -15,11 +15,11 @@ diesel::table! {
 diesel::table! {
     document (id_document) {
         id_document -> Uuid,
-        name -> Nullable<Varchar>,
-        extension -> Nullable<Varchar>,
-        application -> Nullable<Varchar>,
+        name -> Varchar,
+        extension -> Varchar,
+        application -> Varchar,
         create_datetime -> Timestamptz,
-        create_username -> Nullable<Varchar>,
+        create_username -> Varchar,
         update_datetime -> Nullable<Timestamptz>,
         update_username -> Nullable<Varchar>,
         delete_datetime -> Nullable<Timestamptz>,

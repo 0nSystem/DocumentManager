@@ -4,7 +4,6 @@ use uuid::Uuid;
 
 use crate::schema::document;
 
-
 #[derive(Queryable, Identifiable, Selectable, Debug, PartialEq)]
 #[diesel(table_name = document)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -24,6 +23,7 @@ pub struct Document {
     pub delete_datetime: Option<NaiveDateTime>,
     pub delete_username: Option<String>,
 }
+
 #[derive(Insertable)]
 #[diesel(table_name = document)]
 pub struct NewDocument<'a> {

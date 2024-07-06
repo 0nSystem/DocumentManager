@@ -7,5 +7,5 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    volumes:
-      - ./bbdd/01_scheme.sql:/docker-entrypoint-initdb.d/01_scheme.sql
+      #volumes:
+      #- ./bbdd/01_scheme.sql:/docker-entrypoint-initdb.d/01_scheme.sql
