@@ -1,10 +1,15 @@
-use std::path::PathBuf;
-use color_eyre::eyre::ContextCompat;
-use color_eyre::Result;
+use std::ffi::OsStr;
+use std::fs::{create_dir_all, copy};
+use std::io::Read;
+use std::path::{Path, PathBuf};
+use actix_files::NamedFile;
+use color_eyre::{Report, Result};
+use color_eyre::eyre::{Context, ContextCompat};
+use log::debug;
 use uuid::Uuid;
 
-struct PathFile(PathBuf, String);
-pub fn generate_path_by_uuid(uuid: Uuid) -> Result<PathFile> {
+pub struct PathFile(PathBuf, String);
+pub fn path_by_uuid(uuid: Uuid) -> Result<PathFile> {
     let uuid = uuid.to_string();
 
     let index_last_separator_position = uuid.to_string().rfind("-").with_context(|| "Error find separator in uuid")?;
@@ -12,15 +17,47 @@ pub fn generate_path_by_uuid(uuid: Uuid) -> Result<PathFile> {
     let path_directory = uuid.get(0..index_last_separator_position)
         .map(|x| x.replace('-', "/")) //TODO replace slash is dependecy by system
         .with_context(|| "Error making path directory by uuid")?;
-    let file_name = uuid.get(index_last_separator_position..).with_context(|| "Error making file name by uuid")?;
+    let file_name = uuid.get(index_last_separator_position + 1..) //+1 to Remove Separator
+        .with_context(|| "Error making file name by uuid")?;
 
     Ok(PathFile(PathBuf::from(path_directory), file_name.to_owned()))
 }
 
-pub fn generate_url_by_uuid(base_path: &str, uuid: Uuid) -> Result<String> {
-    let PathFile(directory, file) = generate_path_by_uuid(uuid)?;
+pub fn generate_path_by_uuid_and_extension(base_path: PathBuf, extension: Option<&OsStr>, uuid: Uuid) -> Result<String> {
+    let PathFile(directory, file) = path_by_uuid(uuid)?;
 
-    let path = PathBuf::from(base_path).join(directory).join(file).to_string_lossy().to_string();
-    
-    Ok(path)
+    let mut path = base_path.join(directory)
+        .join(file);
+
+    if let Some(ex) = extension {
+        path.set_extension(ex);
+    }
+
+    Ok(path.to_string_lossy().to_string())
+}
+
+pub async fn read_content_file(path: &Path) -> Result<Vec<u8>> {
+    let file_open = &mut NamedFile::open_async(path).await?;
+
+    let mut buffer_read_content_file = [];
+    file_open.read(&mut buffer_read_content_file)
+        .with_context(|| "Error read file")?;
+
+    Ok(buffer_read_content_file.to_vec())
+}
+
+pub fn move_file(from: &Path, to: PathBuf) -> Result<()> {
+    debug!("Moving file from: {:?}, to: {:?}", from,to);
+
+    if from.is_dir() {
+        return Err(Report::msg("From path is a directory"));
+    }
+
+    if let Some(path_directory) = to.parent() {
+        debug!("Creating directories required to path: {:?}",path_directory);
+        create_dir_all(path_directory)?
+    }
+    //Error using fs::rename, because error by temp files
+    copy(from, to)?;
+    Ok(())
 }

@@ -1,52 +1,54 @@
-use actix_multipart::form::{json::Json as MPJson, tempfile::TempFile};
+use actix_multipart::form::{tempfile::TempFile, text::Text};
 use actix_multipart::form::MultipartForm;
 use actix_web::{delete, get, HttpRequest, HttpResponse, post, put, Responder, web};
-use serde::Deserialize;
-
-use crate::DbPool;
+use actix_web::http::StatusCode;
+use log::info;
+use crate::config::DbPool;
+use crate::EnvironmentState;
 use crate::operations::save_document;
+
 #[get("/index")]
 pub async fn index(_req: HttpRequest) -> impl Responder {
     HttpResponse::Ok().body("Hello world!")
-}
-
-#[derive(Debug, Deserialize)]
-pub struct MetadataDocument {
-    pub application: String,
-    pub is_private_document: bool,
-    pub username: String,
 }
 
 #[derive(Debug, MultipartForm)]
 pub struct DocumentRequest {
     #[multipart(limit = "100MB")]
     pub file: TempFile,
-    pub json: MPJson<MetadataDocument>,
+    pub application: Text<String>,
+    pub is_private_document: Text<bool>,
+    pub username: Text<String>,
 }
 
-#[post("")]
+#[post("/")]
 pub async fn upload_document(
-    form: MultipartForm<DocumentRequest>, conn: web::Data<DbPool>,
+    form: MultipartForm<DocumentRequest>, env_state: web::Data<EnvironmentState>, conn: web::Data<DbPool>,
 ) -> impl Responder {
-    let uuid_generated = save_document(form, conn).await;
-    HttpResponse::Ok().body("Hello world!")
+    match save_document(form, env_state, conn).await {
+        Ok(uuid) => HttpResponse::Ok().json(uuid),
+        Err(error) => {
+            info!("{error}");
+            HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
 }
 
-#[put("")]
+#[put("/")]
 pub async fn update_document(
     MultipartForm(form): MultipartForm<DocumentRequest>, conn: web::Data<DbPool>,
 ) -> impl Responder {
     HttpResponse::Ok().body("Hello world!")
 }
 
-#[delete("")]
+#[delete("/")]
 pub async fn delete_document(
     conn: web::Data<DbPool>
 ) -> impl Responder {
     HttpResponse::Ok().body("Hello world!")
 }
 
-#[get("")]
+#[get("/")]
 pub async fn find_documents(
     conn: web::Data<DbPool>
 ) -> impl Responder {
