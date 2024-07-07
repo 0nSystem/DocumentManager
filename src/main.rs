@@ -7,7 +7,7 @@ use color_eyre::eyre::Context;
 use env_logger::Target;
 
 use crate::config::{config_logger, EnvConfig, establish_connection};
-use crate::endpoints::{find_documents, upload_document};
+use crate::endpoints::{delete_document, find_documents, upload_document};
 
 mod endpoints;
 mod models;
@@ -48,6 +48,7 @@ async fn main() -> Result<()> {
                 .app_data(web::Data::new(env_state))
                 .service(fs::Files::new(&env_config.mount_path, env_config.disk_storage_directory_path).show_files_listing())
                 .service(upload_document)
+                .service(delete_document)
                 .service(find_documents)
         }
     ).bind(("127.0.0.1", 8080))?

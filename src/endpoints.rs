@@ -2,12 +2,14 @@ use actix_multipart::form::{tempfile::TempFile, text::Text};
 use actix_multipart::form::MultipartForm;
 use actix_web::{delete, get, HttpRequest, HttpResponse, post, put, Responder, web};
 use actix_web::http::StatusCode;
+use diesel::AsChangeset;
 use log::info;
 use serde::Deserialize;
+use uuid::Uuid;
 
 use crate::config::DbPool;
 use crate::EnvironmentState;
-use crate::operations::{filter_documents, save_document};
+use crate::operations::{delete_document_and_content, filter_documents, save_document};
 
 #[derive(Debug, MultipartForm)]
 pub struct SaveDocumentRequest {
@@ -38,11 +40,21 @@ pub async fn update_document(
     HttpResponse::Ok().body("Hello world!")
 }
 
+//TODO reference
+#[derive(Deserialize)]
+pub struct DeleteDocumentRequest {
+    pub id_document: Uuid,
+    pub username: String,
+}
 #[delete("/")]
 pub async fn delete_document(
-    conn: web::Data<DbPool>
+    params: web::Query<DeleteDocumentRequest>,
+    conn: web::Data<DbPool>,
 ) -> impl Responder {
-    HttpResponse::Ok().body("Hello world!")
+    match delete_document_and_content(params, conn).await {
+        Ok(_) => HttpResponse::new(StatusCode::OK),
+        Err(_) => HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR)
+    }
 }
 
 

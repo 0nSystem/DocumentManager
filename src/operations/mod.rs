@@ -2,9 +2,11 @@ use std::path::PathBuf;
 
 use actix_multipart::form::MultipartForm;
 use actix_web::web;
+use chrono::{Local, NaiveDateTime};
 use color_eyre::{Report, Result};
 use color_eyre::eyre::Context;
-use diesel::{ExpressionMethods, insert_into};
+use diesel::{ExpressionMethods, insert_into, update};
+use diesel::dsl::now;
 use diesel::prelude::*;
 use diesel_async::{AsyncConnection, RunQueryDsl};
 use diesel_async::scoped_futures::ScopedFutureExt;
@@ -15,8 +17,8 @@ use uuid::Uuid;
 
 use crate::{EnvironmentState, schema};
 use crate::config::DbPool;
-use crate::endpoints::DocumentFilterRequest;
-use crate::models::{Content, Document, NewContent, NewDocument};
+use crate::endpoints::{DeleteDocumentRequest, DocumentFilterRequest};
+use crate::models::{Content, DeleteContent, DeleteDocument, Document, NewContent, NewDocument};
 use crate::operations::fs::{generate_path_by_uuid, generate_url_by_uuid, move_file, read_content_file};
 use crate::schema::{content, document};
 
@@ -74,8 +76,31 @@ pub async fn update_document(
     todo!()
 }
 
-pub async fn delete_document(conn: DbPool) -> Result<()> {
-    todo!()
+pub async fn delete_document_and_content(document_delete: web::Query<DeleteDocumentRequest>, conn: web::Data<DbPool>) -> Result<()> {
+    let conn = &mut conn.get().await?;
+    conn.transaction::<(), Report, _>(|conn| async move {
+        let current_datetime = Local::now().naive_local();
+
+        let delete_document = DeleteDocument {
+            delete_datetime: current_datetime,
+            delete_username: &document_delete.username,
+        };
+        update(document::table)
+            .filter(document::dsl::id_document.eq(document_delete.id_document))
+            .set(delete_document)
+            .execute(conn).await?; //TODO remove await and control end
+
+        let delete_content = DeleteContent {
+            delete_datetime: current_datetime,
+            delete_username: &document_delete.username,
+        };
+        update(content::table)
+            .filter(content::dsl::id_document.eq(document_delete.id_document))
+            .set(delete_content)
+            .execute(conn).await?; //TODO remove await and control end
+
+        Ok(())
+    }.scope_boxed()).await
 }
 
 #[derive(Serialize, Deserialize)]
@@ -94,7 +119,7 @@ pub struct FoundContent {
 
 #[derive(Serialize, Deserialize)]
 pub enum DocumentContent {
-    Content(Vec<u8>),
+    Data(Vec<u8>),
     Url(String),
     None, //Never option
 }
@@ -132,7 +157,7 @@ pub async fn filter_documents(filter: DocumentFilterRequest, env_state: web::Dat
         let document_content = if let Some(c) = content {
             if !c.is_empty() { //never empty
                 let content_file = c.as_slice().first().unwrap();
-                DocumentContent::Content(content_file.data.clone())
+                DocumentContent::Data(content_file.data.clone())
             } else {
                 DocumentContent::None
             }

@@ -1,5 +1,6 @@
 use chrono::NaiveDateTime;
-use diesel::{Associations, Identifiable, Insertable, Queryable, Selectable};
+use diesel::{AsChangeset, Associations, Identifiable, Insertable, Queryable, Selectable};
+use serde::Serialize;
 use uuid::Uuid;
 
 use crate::schema;
@@ -35,6 +36,14 @@ pub struct NewDocument<'a> {
     pub create_username: &'a str,
 }
 
+//TODO reference
+#[derive(Serialize, AsChangeset)]
+#[diesel(table_name = schema::document)]
+pub struct DeleteDocument<'a> {
+    pub delete_datetime: NaiveDateTime,
+    pub delete_username: &'a str,
+}
+
 #[derive(Queryable, Selectable, Identifiable, Associations, Debug, PartialEq)]
 #[diesel(table_name = schema::content)]
 #[diesel(belongs_to(Document, foreign_key = id_document))]
@@ -58,4 +67,11 @@ pub struct NewContent<'a> {
     pub id_document: &'a Uuid,
     pub data: &'a [u8],
     pub create_username: &'a str,
+}
+
+#[derive(Serialize, AsChangeset)]
+#[diesel(table_name = schema::content)]
+pub struct DeleteContent<'a> {
+    pub delete_datetime: NaiveDateTime,
+    pub delete_username: &'a str,
 }
