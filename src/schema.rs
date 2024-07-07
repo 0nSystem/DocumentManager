@@ -29,7 +29,4 @@ diesel::table! {
 
 diesel::joinable!(content -> document (id_document));
 
-diesel::allow_tables_to_appear_in_same_query!(
-    content,
-    document,
-);
+diesel::allow_tables_to_appear_in_same_query!(content, document,);

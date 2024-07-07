@@ -60,7 +60,6 @@ pub struct Content {
     pub delete_username: Option<String>,
 }
 
-
 #[derive(Insertable)]
 #[diesel(table_name = schema::content)]
 pub struct NewContent<'a> {

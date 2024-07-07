@@ -1,11 +1,11 @@
 use std::env;
 use std::path::PathBuf;
 
-use color_eyre::{Report, Result};
 use color_eyre::eyre::Context;
-use diesel_async::AsyncPgConnection;
-use diesel_async::pooled_connection::{AsyncDieselConnectionManager, ManagerConfig};
+use color_eyre::{Report, Result};
 use diesel_async::pooled_connection::deadpool::Pool;
+use diesel_async::pooled_connection::{AsyncDieselConnectionManager, ManagerConfig};
+use diesel_async::AsyncPgConnection;
 use dotenvy::dotenv;
 use env_logger::{Builder, Target};
 use log::LevelFilter;
@@ -20,7 +20,7 @@ pub fn configure_storage_directory(disk_storage_directory_path: &str) -> Result<
         std::fs::create_dir_all(disk_storage_directory_path)?;
     }
 
-    return Ok(());
+    Ok(())
 }
 
 pub fn config_logger(target: Target) -> Result<()> {
@@ -39,11 +39,10 @@ pub fn config_logger(target: Target) -> Result<()> {
 pub type DbPool = Pool<AsyncPgConnection>;
 pub fn establish_connection(database_url: String) -> DbPool {
     let config = ManagerConfig::default();
-    let manager = AsyncDieselConnectionManager::<AsyncPgConnection>::new_with_config(database_url, config);
+    let manager =
+        AsyncDieselConnectionManager::<AsyncPgConnection>::new_with_config(database_url, config);
 
-    DbPool::builder(manager)
-        .build()
-        .unwrap()
+    DbPool::builder(manager).build().unwrap()
 }
 
 #[derive(Clone)]
@@ -55,12 +54,10 @@ pub struct EnvConfig {
 impl EnvConfig {
     pub fn new() -> Result<Self> {
         dotenv()?;
-        Ok(
-            Self {
-                database_url: env::var("DATABASE_URL")?,
-                mount_path: env::var("MOUNT_PATH")?,
-                disk_storage_directory_path: env::var("DISK_STORAGE_DIRECTORY")?,
-            }
-        )
+        Ok(Self {
+            database_url: env::var("DATABASE_URL")?,
+            mount_path: env::var("MOUNT_PATH")?,
+            disk_storage_directory_path: env::var("DISK_STORAGE_DIRECTORY")?,
+        })
     }
 }

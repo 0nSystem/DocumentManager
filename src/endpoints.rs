@@ -1,15 +1,14 @@
-use actix_multipart::form::{tempfile::TempFile, text::Text};
 use actix_multipart::form::MultipartForm;
-use actix_web::{delete, get, HttpRequest, HttpResponse, post, put, Responder, web};
+use actix_multipart::form::{tempfile::TempFile, text::Text};
 use actix_web::http::StatusCode;
-use diesel::AsChangeset;
+use actix_web::{delete, get, post, web, HttpResponse, Responder};
 use log::info;
 use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::config::DbPool;
-use crate::EnvironmentState;
 use crate::operations::{delete_document_and_content, filter_documents, save_document};
+use crate::EnvironmentState;
 
 #[derive(Debug, MultipartForm)]
 pub struct SaveDocumentRequest {
@@ -22,7 +21,9 @@ pub struct SaveDocumentRequest {
 
 #[post("/")]
 pub async fn upload_document(
-    form: MultipartForm<SaveDocumentRequest>, env_state: web::Data<EnvironmentState>, conn: web::Data<DbPool>,
+    form: MultipartForm<SaveDocumentRequest>,
+    env_state: web::Data<EnvironmentState>,
+    conn: web::Data<DbPool>,
 ) -> impl Responder {
     match save_document(form, env_state, conn).await {
         Ok(uuid) => HttpResponse::Ok().json(uuid),
@@ -31,13 +32,6 @@ pub async fn upload_document(
             HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
-}
-
-#[put("/")]
-pub async fn update_document(
-    MultipartForm(form): MultipartForm<SaveDocumentRequest>, conn: web::Data<DbPool>,
-) -> impl Responder {
-    HttpResponse::Ok().body("Hello world!")
 }
 
 //TODO reference
@@ -53,10 +47,9 @@ pub async fn delete_document(
 ) -> impl Responder {
     match delete_document_and_content(params, conn).await {
         Ok(_) => HttpResponse::new(StatusCode::OK),
-        Err(_) => HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR)
+        Err(_) => HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR),
     }
 }
-
 
 #[derive(Deserialize)]
 pub struct DocumentFilterRequest {
