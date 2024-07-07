@@ -37,13 +37,12 @@ pub fn generate_path_by_uuid_and_extension(base_path: PathBuf, extension: Option
 }
 
 pub async fn read_content_file(path: &Path) -> Result<Vec<u8>> {
-    let file_open = &mut NamedFile::open_async(path).await?;
+    let mut file_open = &mut NamedFile::open_async(path).await?;
 
-    let mut buffer_read_content_file = [];
-    file_open.read(&mut buffer_read_content_file)
-        .with_context(|| "Error read file")?;
-
-    Ok(buffer_read_content_file.to_vec())
+    let mut buffer_read_content_file = vec![];
+    file_open.read_to_end(&mut buffer_read_content_file)?;
+    
+    Ok(buffer_read_content_file)
 }
 
 pub fn move_file(from: &Path, to: PathBuf) -> Result<()> {

@@ -38,7 +38,6 @@ impl TryFrom<EnvConfig> for EnvironmentState {
 async fn main() -> Result<()> {
     color_eyre::install()?;
     config_logger(Target::Stdout)?;
-    ast()?;
 
     HttpServer::new(
         || {
@@ -55,12 +54,4 @@ async fn main() -> Result<()> {
         .run()
         .await
         .with_context(|| "Error starting http server")
-}
-
-fn ast() -> Result<()> {
-    let env_config = EnvConfig::new()?;
-    configure_storage_directory(&env_config.disk_storage_directory_path).unwrap();
-
-    let env_state = EnvironmentState::try_from(env_config.clone())?;
-    Ok(())
 }
