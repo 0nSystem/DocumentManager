@@ -4,7 +4,7 @@ diesel::table! {
     content (id) {
         id -> Uuid,
         id_document -> Uuid,
-        data -> Bytea,
+        data -> Text,
         create_datetime -> Timestamptz,
         create_username -> Varchar,
         delete_datetime -> Nullable<Timestamptz>,
@@ -16,7 +16,8 @@ diesel::table! {
     document (id_document) {
         id_document -> Uuid,
         name -> Varchar,
-        extension -> Varchar,
+        extension -> Nullable<Varchar>,
+        content_type -> Nullable<Varchar>,
         application -> Varchar,
         create_datetime -> Timestamptz,
         create_username -> Varchar,
@@ -29,4 +30,7 @@ diesel::table! {
 
 diesel::joinable!(content -> document (id_document));
 
-diesel::allow_tables_to_appear_in_same_query!(content, document,);
+diesel::allow_tables_to_appear_in_same_query!(
+    content,
+    document,
+);

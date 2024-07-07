@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS public.document
 
     id_document     uuid,
     name            varchar     NOT NULL,
-    extension       varchar     NOT NULL,
+    extension       varchar,
+    content_type    varchar,
     application     varchar     NOT NULL,
 
     create_datetime timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,

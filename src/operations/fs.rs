@@ -68,13 +68,13 @@ pub fn generate_url_by_uuid(base_path: String, uuid: Uuid, extension: &str) -> R
 }
 
 #[allow(unused_mut)]
-pub async fn read_content_file(path: &Path) -> Result<Vec<u8>> {
+pub async fn read_content_file_to_base64(path: &Path) -> Result<String> {
     let mut file_open = NamedFile::open_async(path).await?;
 
     let mut buffer_read_content_file = vec![];
     file_open.read_to_end(&mut buffer_read_content_file)?;
 
-    Ok(buffer_read_content_file)
+    Ok(base64::encode(buffer_read_content_file))
 }
 
 pub fn move_file(from: &Path, to: PathBuf) -> Result<()> {
@@ -96,10 +96,10 @@ pub fn move_file(from: &Path, to: PathBuf) -> Result<()> {
     Ok(())
 }
 
-pub fn get_extension_in_file_name(file_name: &str) -> &str {
+pub fn get_extension_and_file_name(file_name: &str) -> (&str, Option<&str>) {
     if let Some(index) = file_name.rfind('.') {
-        &file_name[index..]
+        (&file_name[..index], Some(&file_name[index..]))
     } else {
-        ""
+        (file_name, None)
     }
 }

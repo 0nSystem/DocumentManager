@@ -13,8 +13,9 @@ pub struct Document {
     pub id_document: Uuid,
 
     pub name: String,
-    pub extension: String,
     pub application: String,
+    pub extension: Option<String>,
+    pub content_type: Option<String>,
 
     pub create_datetime: NaiveDateTime,
     pub create_username: String,
@@ -32,6 +33,7 @@ pub struct NewDocument<'a> {
     pub id_document: &'a Uuid,
     pub name: &'a str,
     pub extension: Option<String>,
+    pub content_type: Option<String>,
     pub application: &'a str,
     pub create_username: &'a str,
 }
@@ -51,7 +53,7 @@ pub struct DeleteDocument<'a> {
 pub struct Content {
     pub id: Uuid,
     pub id_document: Uuid,
-    pub data: Vec<u8>,
+    pub data: String,
 
     pub create_datetime: NaiveDateTime,
     pub create_username: String,
@@ -64,7 +66,7 @@ pub struct Content {
 #[diesel(table_name = schema::content)]
 pub struct NewContent<'a> {
     pub id_document: &'a Uuid,
-    pub data: &'a [u8],
+    pub data: &'a str,
     pub create_username: &'a str,
 }
 

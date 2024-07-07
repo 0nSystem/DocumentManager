@@ -3,12 +3,12 @@ use std::path::PathBuf;
 use actix_multipart::form::MultipartForm;
 use actix_web::web;
 use chrono::Local;
-use color_eyre::eyre::Context;
 use color_eyre::{Report, Result};
+use color_eyre::eyre::Context;
+use diesel::{ExpressionMethods, insert_into, update};
 use diesel::prelude::*;
-use diesel::{insert_into, update, ExpressionMethods};
-use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use diesel_async::scoped_futures::ScopedFutureExt;
 use itertools::Itertools;
 use log::debug;
 use serde::{Deserialize, Serialize};
@@ -16,13 +16,10 @@ use uuid::Uuid;
 
 use crate::config::DbPool;
 use crate::endpoints::{DeleteDocumentRequest, DocumentFilterRequest};
-use crate::models::{Content, DeleteContent, DeleteDocument, Document, NewContent, NewDocument};
-use crate::operations::fs::{
-    generate_path_by_uuid, generate_url_by_uuid, get_extension_in_file_name, move_file,
-    read_content_file,
-};
-use crate::schema::{content, document};
 use crate::EnvironmentState;
+use crate::models::{Content, DeleteContent, DeleteDocument, Document, NewContent, NewDocument};
+use crate::operations::fs::{generate_path_by_uuid, generate_url_by_uuid, get_extension_and_file_name, move_file, read_content_file_to_base64};
+use crate::schema::{content, document};
 
 mod fs;
 
@@ -38,12 +35,14 @@ pub async fn save_document(
             let uuid_document = Uuid::new_v4();
             debug!("Generate UUID: {uuid_document}, to save document");
 
-            let filename = form.file.file_name.unwrap_or(uuid_document.to_string());
+            let default_filename_to_scan = &form.file.file_name.unwrap_or("".to_string());
+            let (filename, extension) = get_extension_and_file_name(default_filename_to_scan);
 
             let new_document = NewDocument {
                 id_document: &uuid_document,
-                name: &filename,
-                extension: form.file.content_type.map(|m| m.to_string()),
+                name: filename,
+                extension: extension.map(|x| x.to_string()),
+                content_type: form.file.content_type.map(|m| m.to_string()),
                 application: &form.application,
                 create_username: &form.username,
             };
@@ -51,13 +50,13 @@ pub async fn save_document(
                 .values(new_document)
                 .execute(conn)
                 .await
-                .with_context(|| "Error create ")?;
+                .with_context(|| "Error create document")?;
 
             let temp_file_path = form.file.file.path();
             debug!("Document tempfile path: {:?}", temp_file_path);
             if *form.is_private_document {
                 debug!("Document is private saving in database");
-                let content_file = read_content_file(temp_file_path).await?;
+                let content_file = read_content_file_to_base64(temp_file_path).await?;
                 let content = NewContent {
                     id_document: &uuid_document,
                     data: &content_file,
@@ -69,10 +68,9 @@ pub async fn save_document(
                     .await
                     .with_context(|| "Error save row in table content")?;
             } else {
-                let extension = get_extension_in_file_name(&filename);
                 let new_path = PathBuf::from(generate_path_by_uuid(
                     env_state.disk_storage_directory_path.clone(),
-                    extension,
+                    extension.unwrap_or(""),
                     uuid_document,
                 )?);
                 debug!("Document is public saving in {:?}", new_path);
@@ -81,9 +79,9 @@ pub async fn save_document(
             debug!("Finish procces save document");
             Ok(uuid_document)
         }
-        .scope_boxed()
+            .scope_boxed()
     })
-    .await
+        .await
 }
 
 pub async fn delete_document_and_content(
@@ -117,9 +115,9 @@ pub async fn delete_document_and_content(
 
             Ok(())
         }
-        .scope_boxed()
+            .scope_boxed()
     })
-    .await
+        .await
 }
 
 #[derive(Serialize, Deserialize)]
@@ -138,7 +136,7 @@ pub struct FoundContent {
 
 #[derive(Serialize, Deserialize)]
 pub enum DocumentContent {
-    Data(Vec<u8>),
+    Data(String),
     Url(String),
     None, //Never option
 }
@@ -174,6 +172,8 @@ pub async fn filter_documents(
 
     let mut documents_founds = Vec::new();
     for doc in documents {
+        let resolved_extension = doc.extension.unwrap_or("".to_string());
+
         let content = group_content_by_document.get(&doc.id_document);
         let document_content = if let Some(c) = content {
             if !c.is_empty() {
@@ -184,16 +184,15 @@ pub async fn filter_documents(
                 DocumentContent::None
             }
         } else {
-            let extension = get_extension_in_file_name(&doc.name);
             let content_url =
-                generate_url_by_uuid(env_state.mount_path.clone(), doc.id_document, extension)?;
+                generate_url_by_uuid(env_state.mount_path.clone(), doc.id_document, &resolved_extension)?;
             DocumentContent::Url(content_url)
         };
 
         let found_document = FoundDocument {
             id_document: doc.id_document,
             name: doc.name,
-            extension: doc.extension,
+            extension: resolved_extension,
             application: doc.application,
             content: FoundContent {
                 content: document_content,
