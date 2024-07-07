@@ -1,12 +1,12 @@
 use std::env;
+use std::path::PathBuf;
 
 use actix_files as fs;
 use actix_web::{App, HttpServer};
+use color_eyre::{Report, Result};
 use color_eyre::eyre::Context;
-use color_eyre::Result;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::{AsyncDieselConnectionManager, deadpool::Pool, ManagerConfig};
-use diesel_async::pooled_connection::deadpool::Object;
 use dotenvy::dotenv;
 use env_logger::{Builder, Target};
 use log::LevelFilter;
@@ -26,12 +26,11 @@ fn config_logger(target: Target) -> Result<()> {
         .format_module_path(false)
         .format_timestamp_millis()
         .write_style(env_logger::WriteStyle::Always)
-        .filter(None, LevelFilter::Info)
+        .filter(None, LevelFilter::Debug)
         .try_init()
-        .with_context(|| "Zork++ wasn't unable to set up the logger")
+        .with_context(|| "Wasn't unable to set up the logger")
 }
 
-pub type DbConnection = Object<AsyncDieselConnectionManager<AsyncPgConnection>>;
 pub type DbPool = Pool<AsyncPgConnection>;
 async fn establish_connection() -> DbPool {
     dotenv().ok();
@@ -44,6 +43,19 @@ async fn establish_connection() -> DbPool {
         .build().unwrap()
 }
 
+fn configure_storage_directory(disk_path: &str) -> Result<()> {
+    let disk = PathBuf::from(disk_path);
+
+    if disk.exists() && disk.is_file() {
+        return Err(Report::msg("Error oath for files services isn´t directory"));
+    }
+
+    if !disk.exists() {
+        std::fs::create_dir_all(disk_path)?;
+    }
+
+    return Ok(());
+}
 
 #[actix_web::main]
 async fn main() -> Result<()> {
@@ -51,10 +63,15 @@ async fn main() -> Result<()> {
     config_logger(Target::Stdout)?;
 
     HttpServer::new(
-        || App::new()
-            .app_data(establish_connection())
-            .service(fs::Files::new("/static", ".").show_files_listing())
-            .service(index)
+        || {
+            let disk_path = "./assets";
+            let endpoint_file_server = "/static".to_string();
+            configure_storage_directory(&disk_path).unwrap();
+            App::new()
+                .app_data(establish_connection())
+                .service(fs::Files::new(&endpoint_file_server, disk_path).show_files_listing())
+                .service(index)
+        }
     ).bind(("127.0.0.1", 8080))?
         .run()
         .await
