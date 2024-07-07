@@ -1,25 +1,29 @@
-use std::io::Read;
 use std::path::PathBuf;
 
 use actix_multipart::form::MultipartForm;
 use actix_web::web;
 use color_eyre::{Report, Result};
 use color_eyre::eyre::Context;
-use diesel::insert_into;
+use diesel::{ExpressionMethods, insert_into};
+use diesel::prelude::*;
 use diesel_async::{AsyncConnection, RunQueryDsl};
 use diesel_async::scoped_futures::ScopedFutureExt;
+use itertools::Itertools;
 use log::debug;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::config::DbPool;
-use crate::models::{NewContent, NewDocument};
-use crate::operations::fs::{generate_path_by_uuid_and_extension, move_file, path_by_uuid, read_content_file};
 use crate::{EnvironmentState, schema};
+use crate::config::DbPool;
+use crate::endpoints::DocumentFilterRequest;
+use crate::models::{Content, Document, NewContent, NewDocument};
+use crate::operations::fs::{generate_path_by_uuid, generate_url_by_uuid, move_file, read_content_file};
+use crate::schema::{content, document};
 
 mod fs;
 
 pub async fn save_document(
-    MultipartForm(form): MultipartForm<crate::endpoints::DocumentRequest>,
+    MultipartForm(form): MultipartForm<crate::endpoints::SaveDocumentRequest>,
     env_state: web::Data<EnvironmentState>, conn: web::Data<DbPool>,
 ) -> Result<Uuid> {
     let conn = &mut conn.get().await?;
@@ -49,12 +53,12 @@ pub async fn save_document(
                 data: &content_file,
                 create_username: &form.username,
             };
-            insert_into(schema::content::table)
+            insert_into(content::table)
                 .values(content)
                 .execute(conn).await
                 .with_context(|| "Error save row in table content")?;
         } else {
-            let new_path = PathBuf::from(generate_path_by_uuid_and_extension(env_state.disk_storage_directory_path.clone(), temp_file_path.extension(), uuid_document)?);
+            let new_path = PathBuf::from(generate_path_by_uuid(env_state.disk_storage_directory_path.clone(), uuid_document)?);
             debug!("Document is public saving in {:?}",new_path);
             move_file(temp_file_path, new_path)?;
         }
@@ -74,10 +78,85 @@ pub async fn delete_document(conn: DbPool) -> Result<()> {
     todo!()
 }
 
-pub async fn find_documents(conn: DbPool) -> Result<()> {
-    todo!()
+#[derive(Serialize, Deserialize)]
+pub struct FoundDocument {
+    pub id_document: Uuid,
+    pub name: String,
+    pub extension: String,
+    pub application: String,
+    pub content: FoundContent,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct FoundContent {
+    pub content: DocumentContent,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum DocumentContent {
+    Content(Vec<u8>),
+    Url(String),
+    None, //Never option
+}
+pub async fn filter_documents(filter: DocumentFilterRequest, env_state: web::Data<EnvironmentState>, conn: web::Data<DbPool>) -> Result<Vec<FoundDocument>> {
+    let conn = &mut conn.get().await?;
+
+    let mut query = document::dsl::document.into_boxed()
+        .filter(document::dsl::delete_datetime.is_null())
+        .filter(document::dsl::create_username.eq(filter.username))
+        .filter(document::dsl::application.eq(filter.application));
+
+    if !filter.extensions.is_empty() {
+        query = query.filter(document::dsl::extension.eq_any(filter.extensions));
+    }
+
+    if !filter.content_type.is_empty() {
+        query = query.filter(document::dsl::extension.eq_any(filter.content_type));
+    }
+
+    let documents = query
+        .select(Document::as_select())
+        .load(conn).await?;
+
+
+    let content_found = Content::belonging_to(&documents)
+        .filter(content::dsl::delete_datetime.is_null())
+        .select(Content::as_select())
+        .load(conn).await?;
+    let group_content_by_document = content_found
+        .iter().into_group_map_by(|f| f.id_document);
+
+    let mut documents_founds = Vec::new();
+    for doc in documents {
+        let content = group_content_by_document.get(&doc.id_document);
+        let document_content = if let Some(c) = content {
+            if !c.is_empty() { //never empty
+                let content_file = c.as_slice().first().unwrap();
+                DocumentContent::Content(content_file.data.clone())
+            } else {
+                DocumentContent::None
+            }
+        } else {
+            let content_url = generate_url_by_uuid(env_state.mount_path.clone(), doc.id_document)?;
+            DocumentContent::Url(content_url)
+        };
+
+        let found_document = FoundDocument {
+            id_document: doc.id_document,
+            name: doc.name,
+            extension: doc.extension,
+            application: doc.application,
+            content: FoundContent {
+                content: document_content
+            },
+        };
+
+        documents_founds.push(found_document);
+    }
+
+
+    Ok(documents_founds)
+}
 
 
 

@@ -1,10 +1,11 @@
 use chrono::NaiveDateTime;
-use diesel::{Insertable, Queryable, Selectable};
+use diesel::{Associations, Identifiable, Insertable, Queryable, Selectable};
 use uuid::Uuid;
 
 use crate::schema;
 
-#[derive(Queryable, Selectable, Debug, PartialEq)]
+#[derive(Queryable, Selectable, Identifiable, Debug, PartialEq)]
+#[diesel(primary_key(id_document))]
 #[diesel(table_name = schema::document)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Document {
@@ -34,9 +35,9 @@ pub struct NewDocument<'a> {
     pub create_username: &'a str,
 }
 
-#[derive(Queryable, Selectable, Debug, PartialEq)]
+#[derive(Queryable, Selectable, Identifiable, Associations, Debug, PartialEq)]
 #[diesel(table_name = schema::content)]
-#[diesel(belongs_to(schema::document, foreign_key = id_document))]
+#[diesel(belongs_to(Document, foreign_key = id_document))]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Content {
     pub id: Uuid,
@@ -49,6 +50,7 @@ pub struct Content {
     pub delete_datetime: Option<NaiveDateTime>,
     pub delete_username: Option<String>,
 }
+
 
 #[derive(Insertable)]
 #[diesel(table_name = schema::content)]
