@@ -31,10 +31,10 @@ pub fn path_by_uuid(uuid: Uuid) -> Result<PathFile> {
     ))
 }
 
-pub fn generate_path_by_uuid(base_path: PathBuf, uuid: Uuid) -> Result<String> {
+pub fn generate_path_by_uuid(base_path: PathBuf, extension: &str, uuid: Uuid) -> Result<String> {
     let PathFile(directory, file) = path_by_uuid(uuid)?;
 
-    let path = base_path.join(directory).join(file);
+    let path = base_path.join(directory).join(file + extension);
     Ok(path.to_string_lossy().to_string())
 }
 
@@ -56,13 +56,14 @@ pub fn url_by_uuid(uuid: Uuid) -> Result<String> {
 
     Ok(path_directory + "/" + file_name)
 }
-pub fn generate_url_by_uuid(base_path: String, uuid: Uuid) -> Result<String> {
+pub fn generate_url_by_uuid(base_path: String, uuid: Uuid, extension: &str) -> Result<String> {
     //TODO pending url server?
     let file = url_by_uuid(uuid)?;
     let mut absolute_path = String::new();
     absolute_path.push_str(&base_path);
     absolute_path.push('/');
     absolute_path.push_str(&file);
+    absolute_path.push_str(extension);
     Ok(absolute_path)
 }
 
@@ -93,4 +94,12 @@ pub fn move_file(from: &Path, to: PathBuf) -> Result<()> {
     //Error using fs::rename, because error by temp files
     copy(from, to)?;
     Ok(())
+}
+
+pub fn get_extension_in_file_name(file_name: &str) -> &str {
+    if let Some(index) = file_name.rfind('.') {
+        &file_name[index..]
+    } else {
+        ""
+    }
 }

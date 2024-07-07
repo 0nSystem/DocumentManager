@@ -12,7 +12,7 @@ use crate::EnvironmentState;
 
 #[derive(Debug, MultipartForm)]
 pub struct SaveDocumentRequest {
-    #[multipart(limit = "100MB")]
+    #[multipart(limit = "5GB")]
     pub file: TempFile,
     pub application: Text<String>,
     pub is_private_document: Text<bool>,

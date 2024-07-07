@@ -18,7 +18,8 @@ use crate::config::DbPool;
 use crate::endpoints::{DeleteDocumentRequest, DocumentFilterRequest};
 use crate::models::{Content, DeleteContent, DeleteDocument, Document, NewContent, NewDocument};
 use crate::operations::fs::{
-    generate_path_by_uuid, generate_url_by_uuid, move_file, read_content_file,
+    generate_path_by_uuid, generate_url_by_uuid, get_extension_in_file_name, move_file,
+    read_content_file,
 };
 use crate::schema::{content, document};
 use crate::EnvironmentState;
@@ -36,9 +37,12 @@ pub async fn save_document(
         async move {
             let uuid_document = Uuid::new_v4();
             debug!("Generate UUID: {uuid_document}, to save document");
+
+            let filename = form.file.file_name.unwrap_or(uuid_document.to_string());
+
             let new_document = NewDocument {
                 id_document: &uuid_document,
-                name: &form.file.file_name.unwrap_or(uuid_document.to_string()),
+                name: &filename,
                 extension: form.file.content_type.map(|m| m.to_string()),
                 application: &form.application,
                 create_username: &form.username,
@@ -65,8 +69,10 @@ pub async fn save_document(
                     .await
                     .with_context(|| "Error save row in table content")?;
             } else {
+                let extension = get_extension_in_file_name(&filename);
                 let new_path = PathBuf::from(generate_path_by_uuid(
                     env_state.disk_storage_directory_path.clone(),
+                    extension,
                     uuid_document,
                 )?);
                 debug!("Document is public saving in {:?}", new_path);
@@ -178,7 +184,9 @@ pub async fn filter_documents(
                 DocumentContent::None
             }
         } else {
-            let content_url = generate_url_by_uuid(env_state.mount_path.clone(), doc.id_document)?;
+            let extension = get_extension_in_file_name(&doc.name);
+            let content_url =
+                generate_url_by_uuid(env_state.mount_path.clone(), doc.id_document, extension)?;
             DocumentContent::Url(content_url)
         };
 
