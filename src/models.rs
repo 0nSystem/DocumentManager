@@ -1,11 +1,11 @@
 use chrono::NaiveDateTime;
-use diesel::{Identifiable, Insertable, Queryable, Selectable};
+use diesel::{Insertable, Queryable, Selectable};
 use uuid::Uuid;
 
-use crate::schema::document;
+use crate::schema;
 
-#[derive(Queryable, Identifiable, Selectable, Debug, PartialEq)]
-#[diesel(table_name = document)]
+#[derive(Queryable, Selectable, Debug, PartialEq)]
+#[diesel(table_name = schema::document)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Document {
     pub id_document: Uuid,
@@ -25,18 +25,18 @@ pub struct Document {
 }
 
 #[derive(Insertable)]
-#[diesel(table_name = document)]
+#[diesel(table_name = schema::document)]
 pub struct NewDocument<'a> {
-    pub uuid: &'a Uuid,
+    pub id_document: &'a Uuid,
     pub name: &'a str,
-    pub extension: Option<&'a str>,
+    pub extension: Option<String>,
     pub application: &'a str,
     pub create_username: &'a str,
 }
 
-#[derive(Queryable, Identifiable, Selectable, Debug, PartialEq)]
-#[diesel(table_name = content)]
-#[diesel(belongs_to(Document, foreign_key = "id_document"))]
+#[derive(Queryable, Selectable, Debug, PartialEq)]
+#[diesel(table_name = schema::content)]
+#[diesel(belongs_to(schema::document, foreign_key = id_document))]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Content {
     pub id: Uuid,
@@ -49,10 +49,11 @@ pub struct Content {
     pub delete_datetime: Option<NaiveDateTime>,
     pub delete_username: Option<String>,
 }
+
 #[derive(Insertable)]
-#[diesel(table_name = document)]
+#[diesel(table_name = schema::content)]
 pub struct NewContent<'a> {
     pub id_document: &'a Uuid,
     pub data: &'a str,
-    pub create_username: String,
+    pub create_username: &'a str,
 }

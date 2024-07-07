@@ -4,7 +4,7 @@ use actix_web::{delete, get, HttpRequest, HttpResponse, post, put, Responder, we
 use serde::Deserialize;
 
 use crate::DbPool;
-
+use crate::operations::save_document;
 #[get("/index")]
 pub async fn index(_req: HttpRequest) -> impl Responder {
     HttpResponse::Ok().body("Hello world!")
@@ -14,6 +14,7 @@ pub async fn index(_req: HttpRequest) -> impl Responder {
 pub struct MetadataDocument {
     pub application: String,
     pub is_private_document: bool,
+    pub username: String,
 }
 
 #[derive(Debug, MultipartForm)]
@@ -25,20 +26,29 @@ pub struct DocumentRequest {
 
 #[post("")]
 pub async fn upload_document(
-    MultipartForm(form): MultipartForm<DocumentRequest>, conn: web::Data<DbPool>,
-) -> impl Responder {}
+    form: MultipartForm<DocumentRequest>, conn: web::Data<DbPool>,
+) -> impl Responder {
+    let uuid_generated = save_document(form, conn).await;
+    HttpResponse::Ok().body("Hello world!")
+}
 
 #[put("")]
 pub async fn update_document(
     MultipartForm(form): MultipartForm<DocumentRequest>, conn: web::Data<DbPool>,
-) -> impl Responder {}
+) -> impl Responder {
+    HttpResponse::Ok().body("Hello world!")
+}
 
 #[delete("")]
 pub async fn delete_document(
     conn: web::Data<DbPool>
-) -> impl Responder {}
+) -> impl Responder {
+    HttpResponse::Ok().body("Hello world!")
+}
 
 #[get("")]
 pub async fn find_documents(
     conn: web::Data<DbPool>
-) -> impl Responder {}
+) -> impl Responder {
+    HttpResponse::Ok().body("Hello world!")
+}

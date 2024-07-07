@@ -3,13 +3,13 @@ use std::env;
 use actix_files as fs;
 use actix_web::{App, HttpServer};
 use color_eyre::eyre::Context;
-use diesel::prelude::*;
-use diesel::r2d2::{ConnectionManager, Pool};
+use color_eyre::Result;
 use diesel_async::AsyncPgConnection;
+use diesel_async::pooled_connection::{AsyncDieselConnectionManager, deadpool::Pool, ManagerConfig};
+use diesel_async::pooled_connection::deadpool::Object;
 use dotenvy::dotenv;
 use env_logger::{Builder, Target};
 use log::LevelFilter;
-use color_eyre::Result;
 
 use crate::endpoints::index;
 
@@ -31,13 +31,17 @@ fn config_logger(target: Target) -> Result<()> {
         .with_context(|| "Zork++ wasn't unable to set up the logger")
 }
 
-
-pub type DbPool = Pool<ConnectionManager<AsyncPgConnection>>;
-fn establish_connection() -> DbPool {
+pub type DbConnection = Object<AsyncDieselConnectionManager<AsyncPgConnection>>;
+pub type DbPool = Pool<AsyncPgConnection>;
+async fn establish_connection() -> DbPool {
     dotenv().ok();
-
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    DbPool::new(ConnectionManager::new(database_url)).expect("Error create pool connection database")
+
+    let config = ManagerConfig::default();
+    let manager = AsyncDieselConnectionManager::<AsyncPgConnection>::new_with_config(database_url, config);
+
+    Pool::builder(manager)
+        .build().unwrap()
 }
 
 
