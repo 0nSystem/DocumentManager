@@ -32,10 +32,7 @@ fn config_logger(target: Target) -> Result<()> {
 }
 
 pub type DbPool = Pool<AsyncPgConnection>;
-async fn establish_connection() -> DbPool {
-    dotenv().ok();
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-
+async fn establish_connection(database_url: String) -> DbPool {
     let config = ManagerConfig::default();
     let manager = AsyncDieselConnectionManager::<AsyncPgConnection>::new_with_config(database_url, config);
 
@@ -43,15 +40,31 @@ async fn establish_connection() -> DbPool {
         .build().unwrap()
 }
 
-fn configure_storage_directory(disk_path: &str) -> Result<()> {
-    let disk = PathBuf::from(disk_path);
+struct EnvConfig {
+    pub database_url: String,
+    pub mount_path: String,
+    pub disk_storage_directory_path: String,
+}
+impl EnvConfig {
+    fn new() -> Result<Self> {
+        Ok(
+            Self {
+                database_url: env::var("DATABASE_URL")?,
+                mount_path: env::var("MOUNT_PATH")?,
+                disk_storage_directory_path: env::var("DISK_STORAGE_DIRECTORY")?,
+            }
+        )
+    }
+}
 
+fn configure_storage_directory(disk_storage_directory_path: &str) -> Result<()> {
+    let disk = PathBuf::from(disk_storage_directory_path);
     if disk.exists() && disk.is_file() {
         return Err(Report::msg("Error oath for files services isn´t directory"));
     }
 
     if !disk.exists() {
-        std::fs::create_dir_all(disk_path)?;
+        std::fs::create_dir_all(disk_storage_directory_path)?;
     }
 
     return Ok(());
@@ -64,12 +77,11 @@ async fn main() -> Result<()> {
 
     HttpServer::new(
         || {
-            let disk_path = "./assets";
-            let endpoint_file_server = "/static".to_string();
-            configure_storage_directory(&disk_path).unwrap();
+            let env_config = EnvConfig::new().unwrap();
+            configure_storage_directory(&env_config.disk_storage_directory_path).unwrap();
             App::new()
-                .app_data(establish_connection())
-                .service(fs::Files::new(&endpoint_file_server, disk_path).show_files_listing())
+                .app_data(establish_connection(env_config.database_url))
+                .service(fs::Files::new(&env_config.mount_path, env_config.disk_storage_directory_path).show_files_listing())
                 .service(index)
         }
     ).bind(("127.0.0.1", 8080))?

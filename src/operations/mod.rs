@@ -1,3 +1,5 @@
+mod fs;
+
 use actix_multipart::form::MultipartForm;
 use actix_web::web;
 use color_eyre::{Report, Result};
@@ -63,3 +65,7 @@ pub async fn delete_document(conn: DbPool) -> Result<()> {
 pub async fn find_documents(conn: DbPool) -> Result<()> {
     todo!()
 }
+
+
+
+
