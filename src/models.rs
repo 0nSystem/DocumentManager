@@ -41,7 +41,7 @@ pub struct NewDocument<'a> {
 pub struct Content {
     pub id: Uuid,
     pub id_document: Uuid,
-    pub data: String,
+    pub data: Vec<u8>,
 
     pub create_datetime: NaiveDateTime,
     pub create_username: String,
@@ -54,6 +54,6 @@ pub struct Content {
 #[diesel(table_name = schema::content)]
 pub struct NewContent<'a> {
     pub id_document: &'a Uuid,
-    pub data: &'a str,
+    pub data: &'a [u8],
     pub create_username: &'a str,
 }

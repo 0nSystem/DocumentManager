@@ -4,7 +4,7 @@ diesel::table! {
     content (id) {
         id -> Uuid,
         id_document -> Uuid,
-        data -> Text,
+        data -> Bytea,
         create_datetime -> Timestamptz,
         create_username -> Varchar,
         delete_datetime -> Nullable<Timestamptz>,
