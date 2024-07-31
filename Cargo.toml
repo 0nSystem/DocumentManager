@@ -9,9 +9,9 @@ log = "0.4.17"
 env_logger = "0.11.3"
 color-eyre = { version = "0.6.2", default-features = false }
 
-actix-web = "4.0"
+actix-web = "4.8"
 actix-files = "0.6"
-actix-multipart = "0.6"
+actix-multipart = "0.7.2"
 
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -26,5 +26,8 @@ diesel = { version = "2.1.0", features = ["uuid", "chrono"] }
 diesel-async = { version = "0.4.1", features = ["postgres", "deadpool"] }
 
 itertools = { version = "0.13.0" }
-base64 = { version = "0.13" }
+base64 = { version = "0.22.1" }
+utoipa = { version = "4.2.3", features = ["actix_extras", "non_strict_integers", "uuid", "chrono"] }
+utoipa-swagger-ui = { version = "7.1.0", features = ["actix-web"] }
+actix-web-lab = "0.20.2"
 

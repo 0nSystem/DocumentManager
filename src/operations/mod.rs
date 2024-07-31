@@ -153,6 +153,7 @@ pub async fn filter_documents(
         .filter(document::dsl::create_username.eq(filter.username))
         .filter(document::dsl::application.eq(filter.application));
 
+
     if !filter.extensions.is_empty() {
         query = query.filter(document::dsl::extension.eq_any(filter.extensions));
     }

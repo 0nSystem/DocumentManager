@@ -1,13 +1,18 @@
 use std::path::{Path, PathBuf};
 
 use actix_files as fs;
-use actix_web::{web, App, HttpServer};
-use color_eyre::eyre::Context;
+use actix_web::{App, HttpServer, web};
 use color_eyre::{Report, Result};
+use color_eyre::eyre::Context;
 use env_logger::Target;
+use utoipa::{
+    OpenApi, PartialSchema, ToSchema,
+};
+use utoipa_swagger_ui::SwaggerUi;
 
-use crate::config::{config_logger, configure_storage_directory, establish_connection, EnvConfig};
+use crate::config::{config_logger, configure_storage_directory, EnvConfig, establish_connection};
 use crate::endpoints::{delete_document, find_documents, upload_document};
+use crate::endpoints::{DeleteDocumentRequest, DocumentFilterRequest, SaveDocumentRequest};
 
 mod config;
 mod endpoints;
@@ -32,6 +37,14 @@ impl TryFrom<EnvConfig> for EnvironmentState {
     }
 }
 
+#[derive(OpenApi)]
+#[openapi(
+    paths(endpoints::upload_document, endpoints::delete_document, endpoints::find_documents),
+    components(schemas(SaveDocumentRequest, DeleteDocumentRequest, DocumentFilterRequest))
+)]
+struct ApiDoc;
+
+
 #[actix_web::main]
 async fn main() -> Result<()> {
     color_eyre::install()?;
@@ -43,23 +56,24 @@ async fn main() -> Result<()> {
         let env_state = EnvironmentState::try_from(env_config.clone()).unwrap();
 
         App::new()
-            .app_data(web::Data::new(establish_connection(
-                env_config.database_url,
-            )))
+            .app_data(web::Data::new(establish_connection(env_config.database_url)))
             .app_data(web::Data::new(env_state))
             .service(
                 fs::Files::new(
                     &env_config.mount_path,
                     env_config.disk_storage_directory_path,
-                )
-                .show_files_listing(),
+                ).show_files_listing(),
+            )
+            .service(
+                SwaggerUi::new("/swagger-ui/{_:.*}")
+                    .url("/api-docs/openapi.json", ApiDoc::openapi()),
             )
             .service(upload_document)
             .service(delete_document)
             .service(find_documents)
     })
-    .bind(("127.0.0.1", 8080))?
-    .run()
-    .await
-    .with_context(|| "Error starting http server")
+        .bind(("127.0.0.1", 8080))?
+        .run()
+        .await
+        .with_context(|| "Error starting http server")
 }
