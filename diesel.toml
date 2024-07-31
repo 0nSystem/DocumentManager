@@ -6,4 +6,4 @@ file = "document_manager/src/schema.rs"
 custom_type_derives = ["diesel::query_builder::QueryId", "Clone"]
 
 [migrations_directory]
-dir = "/mnt/c/Users/dany1/Documents/Proyects/DocumentManager/migrations"
+dir = "document_manager/migrations"
