@@ -150,9 +150,11 @@ pub async fn filter_documents(
     let mut query = document::dsl::document
         .into_boxed()
         .filter(document::dsl::delete_datetime.is_null())
-        .filter(document::dsl::create_username.eq(filter.username))
         .filter(document::dsl::application.eq(filter.application));
 
+    if let Some(username) = filter.username {
+        query = query.filter(document::dsl::create_username.eq(username));
+    }
 
     if !filter.extensions.is_empty() {
         query = query.filter(document::dsl::extension.eq_any(filter.extensions));

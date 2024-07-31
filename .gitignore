@@ -1,5 +1,4 @@
-/target
-/Cargo.lock
-/diesel.toml
-/.idea
-/assets
+*/target
+*/Cargo.lock
+*/.idea
+*/assets
