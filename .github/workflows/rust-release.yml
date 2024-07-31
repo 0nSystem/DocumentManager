@@ -11,8 +11,6 @@ jobs:
   release:
     if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.labels.*.name, 'release/')
     runs-on: ubuntu-latest
-    defaults:
-      working-directory: document_manager
 
     steps:
       - name: Checkout code
@@ -25,12 +23,15 @@ jobs:
 
       - name: Get current version from Cargo.toml
         id: get_version
+        working-directory: document_manager
         run: |
           VERSION=$(grep '^version =' Cargo.toml | head -n 1 | awk -F ' = ' '{print $2}' | tr -d '"')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Determine new version
         id: determine_version
+        working-directory: document_manager
+
         run: |
           VERSION=${{ env.VERSION }}
           LABEL=$(echo "${{ github.event.pull_request.labels[*].name }}" | grep -oP '(?<=release\/)\w+')
@@ -65,6 +66,7 @@ jobs:
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
 
       - name: Update version in Cargo.toml
+        working-directory: document_manager
         run: |
           sed -i '0,/^version = /s/^version = "\(.*\)"/version = "${{ env.NEW_VERSION }}"/' Cargo.toml
 
@@ -76,23 +78,15 @@ jobs:
           message: 'Update version to ${{ env.NEW_VERSION }}'
           add: 'Cargo.toml'
           push: true
+          working-directory: document_manager
+
 
       - name: Build the application
         run: cargo build --release
 
-      - name: Create a release
-        run: |
-          TAG_NAME="v${{ env.NEW_VERSION }}"
-          
-          echo "Creating release for tag $TAG_NAME"
-
-          # Tag the commit
-          git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
-          git push origin "$TAG_NAME"
-
-          # Create a GitHub release
-          curl -X POST \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            -d "{\"tag_name\": \"$TAG_NAME\", \"name\": \"Release $TAG_NAME\", \"body\": \"Release notes for $TAG_NAME\"}" \
-            https://api.github.com/repos/${{ github.repository }}/releases
+      - uses: manoadamro/rust-release@v1
+        with:
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.repository }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          cargo: document_manager/Cargo.toml
