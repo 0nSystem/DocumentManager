@@ -27,6 +27,8 @@ jobs:
       upload_url: ${{ steps.create-release.outputs.upload_url }}
 
   build:
+    permissions:
+      contents: write
     needs: 'generate-release'
     runs-on: ${{ matrix.os }}
     strategy:
