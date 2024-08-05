@@ -27,6 +27,7 @@ jobs:
       upload_url: ${{ steps.create-release.outputs.upload_url }}
 
   build:
+    needs: 'generate-release'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -58,7 +59,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          upload_url: ${{ needs.generate-release.outputs.upload_url }}
           asset_path: target/${{ matrix.target }}/release/DocumentManager${{ matrix.extension }}
           asset_name: DocumentManager-${{ matrix.target }}${{ matrix.extension }}
           asset_content_type: application/octet-stream
