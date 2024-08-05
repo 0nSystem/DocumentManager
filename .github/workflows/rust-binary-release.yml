@@ -56,14 +56,14 @@ jobs:
 
       - name: ls
         run: |
-          ls target/${{ matrix.target }}/release/
+          ls document_manager/target/${{ matrix.target }}/release/
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.generate-release.outputs.upload_url }}
-          asset_path: target/${{ matrix.target }}/release/DocumentManager${{ matrix.extension }}
+          asset_path: document_manager/target/${{ matrix.target }}/release/DocumentManager${{ matrix.extension }}
           asset_name: DocumentManager-${{ matrix.target }}${{ matrix.extension }}
           asset_content_type: application/octet-stream
 
