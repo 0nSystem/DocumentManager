@@ -3,7 +3,7 @@ use actix_web::http::StatusCode;
 use actix_web_lab::extract as exlab;
 use log::info;
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, IntoResponses, ToSchema};
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use crate::config::DbPool;
