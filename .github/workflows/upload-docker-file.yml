@@ -25,4 +25,4 @@ jobs:
 
       - name: Push Docker image
         run: |
-          docker push onsystem/document_manager:tagname
+          docker push onsystem/document_manager:latest
