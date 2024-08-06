@@ -23,22 +23,6 @@ jobs:
           tag_name: ${{ github.ref }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
-
-      - name: Create Metadata File
-        id: create-metadata-file
-        run: |
-          echo "VERSION_TAG=${{steps.version.outputs.version}}" > metadata-file.txt
-          echo "metadata-file.txt" >> $GITHUB_ENV
-
-      - name: Upload Version File Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ${{ steps.create-metadata-file.outputs.create-metadata-file }}
-          asset_name: ${{ steps.create-metadata-file.outputs.create-metadata-file }}
-          asset_content_type: application/octet-stream
     outputs:
       upload_url: ${{ steps.create-release.outputs.upload_url }}
 
