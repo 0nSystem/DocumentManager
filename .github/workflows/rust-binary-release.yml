@@ -27,7 +27,7 @@ jobs:
       - name: Create Metadata File
         id: create-metadata-file
         run: |
-          echo "VERSION_TAG=${{steps.version.outputs.version}}" > metadata-file.txt
+          echo VERSION_TAG=${{steps.version.outputs.version}} > metadata-file.txt
           echo "metadata-file.txt" >> $GITHUB_ENV
 
       - name: Upload Version File Asset
