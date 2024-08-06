@@ -53,11 +53,13 @@ pub struct EnvConfig {
 }
 impl EnvConfig {
     pub fn new() -> Result<Self> {
-        dotenv()?;
+        //if not found env file use system environments
+        let _ = dotenv();
+
         Ok(Self {
-            database_url: env::var("DATABASE_URL")?,
-            mount_path: env::var("MOUNT_PATH")?,
-            disk_storage_directory_path: env::var("DISK_STORAGE_DIRECTORY")?,
+            database_url: env::var("DATABASE_URL").with_context(|| "Not found variable DATABASE_URL")?,
+            mount_path: env::var("MOUNT_PATH").with_context(|| "Not found variable MOUNT_PATH")?,
+            disk_storage_directory_path: env::var("DISK_STORAGE_DIRECTORY").with_context(|| "Not found variable DISK_STORAGE_DIRECTORY")?,
         })
     }
 }
