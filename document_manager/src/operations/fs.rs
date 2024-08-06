@@ -3,8 +3,11 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use actix_files::NamedFile;
-use color_eyre::eyre::ContextCompat;
+use base64::alphabet::STANDARD;
+use base64::Engine;
+use base64::engine::{GeneralPurpose, GeneralPurposeConfig};
 use color_eyre::{Report, Result};
+use color_eyre::eyre::ContextCompat;
 use log::debug;
 use uuid::Uuid;
 
@@ -74,7 +77,8 @@ pub async fn read_content_file_to_base64(path: &Path) -> Result<String> {
     let mut buffer_read_content_file = vec![];
     file_open.read_to_end(&mut buffer_read_content_file)?;
 
-    Ok(base64::encode(buffer_read_content_file))
+    let engine = GeneralPurpose::new(&STANDARD, GeneralPurposeConfig::default());
+    Ok(engine.encode(buffer_read_content_file))
 }
 
 pub fn move_file(from: &Path, to: PathBuf) -> Result<()> {

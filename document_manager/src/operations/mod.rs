@@ -15,7 +15,9 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::config::DbPool;
-use crate::endpoints::{DeleteDocumentRequest, DocumentFilterRequest};
+use crate::endpoints::delete::DeleteDocumentRequest;
+use crate::endpoints::filter::DocumentFilterRequest;
+use crate::endpoints::save::SaveDocumentRequest;
 use crate::EnvironmentState;
 use crate::models::{Content, DeleteContent, DeleteDocument, Document, NewContent, NewDocument};
 use crate::operations::fs::{generate_path_by_uuid, generate_url_by_uuid, get_extension_and_file_name, move_file, read_content_file_to_base64};
@@ -24,7 +26,7 @@ use crate::schema::{content, document};
 mod fs;
 
 pub async fn save_document(
-    MultipartForm(form): MultipartForm<crate::endpoints::SaveDocumentRequest>,
+    MultipartForm(form): MultipartForm<SaveDocumentRequest>,
     env_state: web::Data<EnvironmentState>,
     conn: web::Data<DbPool>,
 ) -> Result<Uuid> {
@@ -140,6 +142,7 @@ pub enum DocumentContent {
     Url(String),
     None, //Never option
 }
+
 pub async fn filter_documents(
     filter: DocumentFilterRequest,
     env_state: web::Data<EnvironmentState>,

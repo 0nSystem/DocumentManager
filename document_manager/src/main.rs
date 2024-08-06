@@ -5,20 +5,18 @@ use actix_web::{App, HttpServer, web};
 use color_eyre::{Report, Result};
 use color_eyre::eyre::Context;
 use env_logger::Target;
-use utoipa::{
-    OpenApi, PartialSchema, ToSchema,
-};
+use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::config::{config_logger, configure_storage_directory, EnvConfig, establish_connection};
-use crate::endpoints::{delete_document, find_documents, upload_document};
-use crate::endpoints::{DeleteDocumentRequest, DocumentFilterRequest, SaveDocumentRequest};
+use crate::endpoints::{delete::delete_document, filter::find_documents, save::upload_document};
+use crate::endpoints::{delete::DeleteDocumentRequest, filter::{DocumentContentResponse, DocumentFilterRequest, FoundContentResponse, FoundDocumentResponse}, save::SaveDocumentRequest};
 
 mod config;
-mod endpoints;
 mod models;
 mod operations;
 mod schema;
+mod endpoints;
 
 #[derive(Clone)]
 pub struct EnvironmentState {
@@ -39,8 +37,17 @@ impl TryFrom<EnvConfig> for EnvironmentState {
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(endpoints::upload_document, endpoints::delete_document, endpoints::find_documents),
-    components(schemas(SaveDocumentRequest, DeleteDocumentRequest, DocumentFilterRequest))
+    paths(
+        endpoints::save::upload_document,
+        endpoints::delete::delete_document,
+        endpoints::filter::find_documents
+    ),
+    components(schemas(
+        SaveDocumentRequest,
+        DeleteDocumentRequest,
+        DocumentFilterRequest,
+        FoundDocumentResponse, FoundContentResponse, DocumentContentResponse
+    ))
 )]
 struct ApiDoc;
 
