@@ -1,0 +1,29 @@
+name: Build and Push Docker Image
+
+on:
+  workflow_run:
+    workflows: [ "Rust-Binary-Release" ]
+    types:
+      - completed
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: [ release ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker image
+        run: |
+          docker build -t document_manager:latest .
+
+      - name: Push Docker image
+        run: |
+          docker push document_manager:latest
