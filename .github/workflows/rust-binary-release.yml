@@ -11,15 +11,21 @@ jobs:
     permissions:
       contents: write
     runs-on: 'ubuntu-latest'
-
     steps:
+
+      - name: Set Version
+        shell: bash
+        run: |
+          echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+          echo "RELEASE_VERSION=$(echo ${GITHUB_REF_NAME} | cut -f1 -d-)" >> $GITHUB_ENV  
+
       - name: Generate release ${{ steps.version.outputs.version }}
         uses: actions/create-release@v1
         id: create-release
         with:
           draft: false
           prerelease: false
-          release_name: ${{ steps.version.outputs.version }}
+          release_name: ${{ env.RELEASE_VERSION }}
           tag_name: ${{ github.ref }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
