@@ -79,7 +79,7 @@ async fn main() -> Result<()> {
             .service(delete_document)
             .service(find_documents)
     })
-        .bind(("127.0.0.1", 8080))?
+        .bind(("0.0.0.0", 8080))?
         .run()
         .await
         .with_context(|| "Error starting http server")
