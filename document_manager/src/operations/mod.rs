@@ -12,7 +12,7 @@ use diesel_async::{AsyncConnection, RunQueryDsl};
 use diesel_async::scoped_futures::ScopedFutureExt;
 use itertools::Itertools;
 use log::{debug, error, info};
-use mime_guess::from_ext;
+use mime_guess::{from_ext, Mime};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -23,7 +23,7 @@ use crate::endpoints::filter::DocumentFilterRequest;
 use crate::endpoints::save::{SaveDocumentByUrlRequest, SaveDocumentRequest};
 use crate::EnvironmentState;
 use crate::models::{Content, DeleteContent, DeleteDocument, Document, NewContent, NewDocument};
-use crate::operations::fs::{delete_file, generate_path_by_uuid, generate_url_by_uuid, get_extension_and_file_name, get_file_name_in_url, move_file, read_content_bytes_to_base64, read_content_file_to_base64, save_file};
+use crate::operations::fs::{delete_file, generate_path_by_uuid, generate_url_by_uuid, get_content_type_by_extension, get_extension_and_file_name, get_file_name_in_url, move_file, read_content_bytes_to_base64, read_content_file_to_base64, save_file};
 use crate::schema::{content, document};
 
 mod fs;
@@ -100,12 +100,12 @@ pub async fn save_document_by_url(params: SaveDocumentByUrlRequest,
     let r = conn.transaction::<Uuid, Report, _>(|conn| {
         async move {
             let url_file = params.url_file.clone();
+
             let file_name_in_url = get_file_name_in_url(&url_file)
                 .ok_or_eyre(format!("Error not match filename in url: {:?} ", url_file))?;
             let (filename, extension) = get_extension_and_file_name(file_name_in_url);
 
-            let mime_type = extension
-                .map(|x| from_ext(x).first_or_octet_stream().to_string());
+            let mime_type = extension.map(get_content_type_by_extension);
             let info_download = download_file(&params.url_file).await?;
             let new_document = NewDocument {
                 id_document: &uuid_document,

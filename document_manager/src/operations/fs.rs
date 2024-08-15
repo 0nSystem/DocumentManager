@@ -9,6 +9,7 @@ use base64::engine::{GeneralPurpose, GeneralPurposeConfig};
 use color_eyre::{Report, Result};
 use color_eyre::eyre::ContextCompat;
 use log::debug;
+use mime_guess::{from_ext, Mime};
 use tokio::fs::{File, remove_file};
 use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
@@ -138,6 +139,13 @@ pub fn get_extension_and_file_name(file_name: &str) -> (&str, Option<&str>) {
     }
 }
 
+pub fn get_content_type_by_extension(ex: &str) -> String {
+    let extension_format_mime_type = match ex.rfind(".") {
+        None => ex,
+        Some(index) => &ex[index + 1..]
+    };
+    from_ext(extension_format_mime_type).first_or_octet_stream().to_string()
+}
 
 pub fn get_file_name_in_url(url: &str) -> Option<&str> {
     if let Some(index) = url.rfind('/') {
