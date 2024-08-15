@@ -31,7 +31,7 @@ pub fn config_logger(target: Target) -> Result<()> {
         .format_module_path(false)
         .format_timestamp_millis()
         .write_style(env_logger::WriteStyle::Always)
-        .filter(None, LevelFilter::Debug)
+        .filter(None, LevelFilter::Info)
         .try_init()
         .with_context(|| "Wasn't unable to set up the logger")
 }

@@ -1,26 +1,29 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use actix_multipart::form::MultipartForm;
 use actix_web::web;
+use bytes::Bytes;
 use chrono::Local;
 use color_eyre::{Report, Result};
-use color_eyre::eyre::Context;
+use color_eyre::eyre::{Context, OptionExt};
 use diesel::{ExpressionMethods, insert_into, update};
 use diesel::prelude::*;
 use diesel_async::{AsyncConnection, RunQueryDsl};
 use diesel_async::scoped_futures::ScopedFutureExt;
 use itertools::Itertools;
-use log::debug;
+use log::{debug, error, info};
+use mime_guess::from_ext;
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::config::DbPool;
 use crate::endpoints::delete::DeleteDocumentRequest;
 use crate::endpoints::filter::DocumentFilterRequest;
-use crate::endpoints::save::SaveDocumentRequest;
+use crate::endpoints::save::{SaveDocumentByUrlRequest, SaveDocumentRequest};
 use crate::EnvironmentState;
 use crate::models::{Content, DeleteContent, DeleteDocument, Document, NewContent, NewDocument};
-use crate::operations::fs::{generate_path_by_uuid, generate_url_by_uuid, get_extension_and_file_name, move_file, read_content_file_to_base64};
+use crate::operations::fs::{delete_file, generate_path_by_uuid, generate_url_by_uuid, get_extension_and_file_name, get_file_name_in_url, move_file, read_content_bytes_to_base64, read_content_file_to_base64, save_file};
 use crate::schema::{content, document};
 
 mod fs;
@@ -85,6 +88,101 @@ pub async fn save_document(
     })
         .await
 }
+
+pub async fn save_document_by_url(params: SaveDocumentByUrlRequest,
+                                  env_state: web::Data<EnvironmentState>,
+                                  conn: &DbPool) -> Result<Uuid> {
+    let conn = &mut conn.get().await?;
+    let uuid_document = Uuid::new_v4();
+    debug!("Generate UUID: {uuid_document}, to save document");
+
+
+    let r = conn.transaction::<Uuid, Report, _>(|conn| {
+        async move {
+            let url_file = params.url_file.clone();
+            let file_name_in_url = get_file_name_in_url(&url_file)
+                .ok_or_eyre(format!("Error not match filename in url: {:?} ", url_file))?;
+            let (filename, extension) = get_extension_and_file_name(file_name_in_url);
+
+            let mime_type = extension
+                .map(|x| from_ext(x).first_or_octet_stream().to_string());
+            let info_download = download_file(&params.url_file).await?;
+            let new_document = NewDocument {
+                id_document: &uuid_document,
+                name: filename,
+                extension: extension.map(|x| x.to_string()),
+                content_type: mime_type,
+                application: &params.application,
+                create_username: &params.username,
+            };
+            insert_into(document::table)
+                .values(new_document)
+                .execute(conn)
+                .await
+                .with_context(|| "Error create document")?;
+
+            if params.is_private_document {
+                debug!("Document is private saving in database");
+                let content_file = read_content_bytes_to_base64(&info_download.content).await?;
+                let content = NewContent {
+                    id_document: &uuid_document,
+                    data: &content_file,
+                    create_username: &params.username,
+                };
+                insert_into(content::table)
+                    .values(content)
+                    .execute(conn)
+                    .await
+                    .with_context(|| "Error save row in table content")?;
+            } else {
+                let new_path = PathBuf::from(generate_path_by_uuid(
+                    env_state.disk_storage_directory_path.clone(),
+                    extension.unwrap_or(""),
+                    uuid_document,
+                )?);
+                debug!("Document is public saving in {:?}", new_path);
+                save_file(new_path, &info_download.content).await?;
+            }
+            debug!("Finish procces save document");
+            Ok(uuid_document)
+        }
+            .scope_boxed()
+    })
+        .await;
+
+
+    match r {
+        Ok(e) => Ok(e),
+        Err(e) => {
+            //delete_file(&clone_new_path).await?;
+
+            Err(e)
+        }
+    }
+}
+
+
+struct DownloadFileInfo {
+    pub content: Bytes,
+}
+async fn download_file(url: &str) -> Result<DownloadFileInfo> {
+    let client = Client::new();
+    let response = client.get(url).send().await?;
+
+    if response.status().is_success() {
+        let content = response.bytes().await?;
+        info!("File downloaded");
+        Ok(
+            DownloadFileInfo {
+                content,
+            }
+        )
+    } else {
+        error!("Error download file: {}", response.status());
+        Err(Report::msg("Error download file"))
+    }
+}
+
 
 pub async fn delete_document_and_content(
     document_delete: web::Query<DeleteDocumentRequest>,

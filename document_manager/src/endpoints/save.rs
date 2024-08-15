@@ -1,13 +1,15 @@
 use actix_multipart::form::{tempfile::TempFile, text::Text};
 use actix_multipart::form::MultipartForm;
 use actix_web::{HttpResponse, post, Responder, web};
+use actix_web::web::Json;
 use log::info;
+use serde::Deserialize;
 use utoipa::{IntoParams, ToSchema};
 
 
 use crate::config::DbPool;
 use crate::EnvironmentState;
-use crate::operations::save_document;
+use crate::operations::{save_document, save_document_by_url};
 
 #[derive(Debug, MultipartForm, ToSchema, IntoParams)]
 pub struct SaveDocumentRequest {
@@ -44,6 +46,37 @@ pub async fn upload_document(
     conn: web::Data<DbPool>,
 ) -> impl Responder {
     match save_document(form, env_state, conn).await {
+        Ok(uuid) => HttpResponse::Ok().json(uuid),
+        Err(error) => {
+            info!("{error}");
+            HttpResponse::InternalServerError().finish()
+        }
+    }
+}
+
+
+#[derive(Debug, Deserialize, ToSchema, IntoParams)]
+pub struct SaveDocumentByUrlRequest {
+    pub url_file: String,
+    pub application: String,
+    pub is_private_document: bool,
+    pub username: String,
+}
+
+#[utoipa::path(
+    post,
+    path = "/upload_document_by_url",
+    request_body(content = SaveDocumentByUrlRequest),
+    responses(
+        (status = 200, description = "Successful", body = Uuid)
+    ),
+)]
+#[post("/upload_document_by_url")]
+pub async fn upload_document_by_url(body: Json<SaveDocumentByUrlRequest>,
+                                    env_state: web::Data<EnvironmentState>,
+                                    conn: web::Data<DbPool>,
+) -> impl Responder {
+    match save_document_by_url(body.into_inner(), env_state, &conn).await {
         Ok(uuid) => HttpResponse::Ok().json(uuid),
         Err(error) => {
             info!("{error}");

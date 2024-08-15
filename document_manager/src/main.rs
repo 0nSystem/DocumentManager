@@ -10,7 +10,8 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use crate::config::{config_logger, configure_storage_directory, EnvConfig, establish_connection};
 use crate::endpoints::{delete::delete_document, filter::find_documents, save::upload_document};
-use crate::endpoints::{delete::DeleteDocumentRequest, filter::{DocumentContentResponse, DocumentFilterRequest, FoundContentResponse, FoundDocumentResponse}, save::SaveDocumentRequest};
+use crate::endpoints::{delete::DeleteDocumentRequest, filter::{DocumentContentResponse, DocumentFilterRequest, FoundContentResponse, FoundDocumentResponse}, save::{SaveDocumentByUrlRequest, SaveDocumentRequest}};
+use crate::endpoints::save::upload_document_by_url;
 
 mod config;
 mod models;
@@ -39,14 +40,16 @@ impl TryFrom<EnvConfig> for EnvironmentState {
 #[openapi(
     paths(
         endpoints::save::upload_document,
+        endpoints::save::upload_document_by_url,
         endpoints::delete::delete_document,
         endpoints::filter::find_documents
     ),
     components(schemas(
         SaveDocumentRequest,
+        SaveDocumentByUrlRequest,
         DeleteDocumentRequest,
         DocumentFilterRequest,
-        FoundDocumentResponse, FoundContentResponse, DocumentContentResponse
+        FoundDocumentResponse, FoundContentResponse, DocumentContentResponse,
     ))
 )]
 struct ApiDoc;
@@ -76,6 +79,7 @@ async fn main() -> Result<()> {
                     .url("/api-docs/openapi.json", ApiDoc::openapi()),
             )
             .service(upload_document)
+            .service(upload_document_by_url)
             .service(delete_document)
             .service(find_documents)
     })
