@@ -94,7 +94,7 @@ pub async fn save_document_by_url(params: SaveDocumentByUrlRequest,
                                   conn: &DbPool) -> Result<Uuid> {
     let conn = &mut conn.get().await?;
     let uuid_document = Uuid::new_v4();
-    debug!("Generate UUID: {uuid_document}, to save document");
+    info!("Generate UUID: {uuid_document}, to save document");
 
 
     let r = conn.transaction::<Uuid, Report, _>(|conn| {
@@ -106,7 +106,9 @@ pub async fn save_document_by_url(params: SaveDocumentByUrlRequest,
             let (filename, extension) = get_extension_and_file_name(file_name_in_url);
 
             let mime_type = extension.map(get_content_type_by_extension);
+            info!("Starting download file id_generated: {}, url: {}",uuid_document,params.url_file);
             let info_download = download_file(&params.url_file).await?;
+            info!("Finish download file id_generated: {}, url: {}",uuid_document,params.url_file);
             let new_document = NewDocument {
                 id_document: &uuid_document,
                 name: filename,
@@ -122,7 +124,7 @@ pub async fn save_document_by_url(params: SaveDocumentByUrlRequest,
                 .with_context(|| "Error create document")?;
 
             if params.is_private_document {
-                debug!("Document is private saving in database");
+                info!("Document is private saving in database {uuid_document}");
                 let content_file = read_content_bytes_to_base64(&info_download.content).await?;
                 let content = NewContent {
                     id_document: &uuid_document,
@@ -140,10 +142,10 @@ pub async fn save_document_by_url(params: SaveDocumentByUrlRequest,
                     extension.unwrap_or(""),
                     uuid_document,
                 )?);
-                debug!("Document is public saving in {:?}", new_path);
+                info!("Document {uuid_document} is public saving in {:?}", new_path);
                 save_file(new_path, &info_download.content).await?;
             }
-            debug!("Finish procces save document");
+            info!("Finish procces save document {uuid_document}");
             Ok(uuid_document)
         }
             .scope_boxed()
@@ -171,12 +173,10 @@ async fn download_file(url: &str) -> Result<DownloadFileInfo> {
 
     if response.status().is_success() {
         let content = response.bytes().await?;
-        info!("File downloaded");
-        Ok(
-            DownloadFileInfo {
-                content,
-            }
-        )
+
+        Ok(DownloadFileInfo {
+            content,
+        })
     } else {
         error!("Error download file: {}", response.status());
         Err(Report::msg("Error download file"))

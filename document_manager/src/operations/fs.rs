@@ -121,8 +121,8 @@ pub async fn save_file(to: PathBuf, content: &[u8]) -> Result<()> {
 
     debug!("Saving file in: {:?}", to);
     let mut f = File::create(to).await?;
-    let _ = f.write(content).await?;
-
+    f.write_all(content).await?;
+    f.flush().await?;
     Ok(())
 }
 
